@@ -4,7 +4,6 @@
     "slug": "lonely-death-prevention-system",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "ldps",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

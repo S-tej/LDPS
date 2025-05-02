@@ -1,5 +1,5 @@
 import React, { useContext, useEffect } from 'react';
-import { Text, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { AuthContext } from '../context/AuthContext';
 

@@ -38,7 +38,7 @@ type VitalsContextType = {
   loading: boolean;
   thresholds: AlertThresholds;
   updateThresholds: (newThresholds: Partial<AlertThresholds>) => Promise<void>;
-  simulateReading: () => Promise<void>;
+  simulateReading: () => Promise<VitalSign | undefined>;
   checkAlertStatus: (vitals: VitalSign) => {[key: string]: boolean};
 };
 
@@ -65,7 +65,7 @@ export const VitalsContext = createContext<VitalsContextType>({
   loading: true,
   thresholds: defaultThresholds,
   updateThresholds: async () => {},
-  simulateReading: async () => {},
+  simulateReading: async () => undefined,
   checkAlertStatus: () => ({}),
 });
 
@@ -146,7 +146,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
     const now = Date.now();
     
     // Generate random ECG-like waveform data (simplified)
-    const ecgPoints = [];
+    const ecgPoints: number[] = [];
     for (let i = 0; i < 50; i++) {
       // Simplified ECG pattern generation
       const baseValue = 0.8;
@@ -174,7 +174,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       const historyRef = ref(database, `vitals/${user.uid}/history`);
       await push(historyRef, newVital);
       
-      return newVital;
+      return newVital; // Fixed: Return the newVital object
     } catch (error) {
       console.error('Failed to simulate reading:', error);
       throw error;
@@ -182,17 +182,29 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const checkAlertStatus = (vitals: VitalSign) => {
-    if (!vitals) return {};
-    
+    if (!vitals) {
+      return {
+        heartRateHigh: false,
+        heartRateLow: false,
+        bloodPressureHigh: false,
+        bloodPressureLow: false,
+        oxygenSaturationLow: false,
+        temperatureHigh: false,
+        temperatureLow: false,
+      };
+    }
+
     return {
       heartRateHigh: vitals.heartRate > thresholds.heartRateHigh,
       heartRateLow: vitals.heartRate < thresholds.heartRateLow,
-      bloodPressureHigh: 
+      bloodPressureHigh: (
         vitals.bloodPressure.systolic > thresholds.bloodPressureHigh.systolic || 
-        vitals.bloodPressure.diastolic > thresholds.bloodPressureHigh.diastolic,
-      bloodPressureLow:
+        vitals.bloodPressure.diastolic > thresholds.bloodPressureHigh.diastolic
+      ),
+      bloodPressureLow: (
         vitals.bloodPressure.systolic < thresholds.bloodPressureLow.systolic ||
-        vitals.bloodPressure.diastolic < thresholds.bloodPressureLow.diastolic,
+        vitals.bloodPressure.diastolic < thresholds.bloodPressureLow.diastolic
+      ),
       oxygenSaturationLow: vitals.oxygenSaturation < thresholds.oxygenSaturationLow,
       temperatureHigh: vitals.temperature > thresholds.temperatureHigh,
       temperatureLow: vitals.temperature < thresholds.temperatureLow
@@ -208,7 +220,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       thresholds,
       updateThresholds,
       simulateReading,
-      checkAlertStatus
+      checkAlertStatus,
     }}>
       {children}
     </VitalsContext.Provider>

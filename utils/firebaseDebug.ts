@@ -1,6 +1,5 @@
 import { database, auth } from '../firebase/config';
 import { ref, set, get, onValue } from 'firebase/database';
-import { signInAnonymously } from 'firebase/auth';
 
 /**
  * Tests the Firebase realtime database connection
@@ -39,25 +38,6 @@ export const testDatabaseConnection = async () => {
       error: error.message || 'Unknown error',
       errorCode: error.code || 'UNKNOWN_ERROR',
       fullError: error
-    };
-  }
-};
-
-/**
- * Tests authentication with Firebase
- */
-export const testAuthentication = async () => {
-  try {
-    // Try anonymous sign-in (most permissive) just to test auth
-    const userCredential = await signInAnonymously(auth);
-    console.log('✅ Firebase authentication successful:', userCredential.user.uid);
-    return { success: true, uid: userCredential.user.uid };
-  } catch (error: any) {
-    console.error('❌ Firebase authentication failed:', error);
-    return {
-      success: false,
-      error: error.message || 'Unknown error',
-      errorCode: error.code || 'UNKNOWN_ERROR'
     };
   }
 };

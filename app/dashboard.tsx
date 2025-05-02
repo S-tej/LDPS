@@ -16,6 +16,7 @@ import { AlertsContext } from '../context/AlertsContext';
 import VitalCard from '../components/VitalCard';
 import AlertBanner from '../components/AlertBanner';
 import EmergencyButton from '../components/EmergencyButton';
+import AuthGuard from '../components/AuthGuard';
 
 export default function Dashboard() {
   const { user, userProfile, logout } = useContext(AuthContext);
@@ -96,128 +97,130 @@ export default function Dashboard() {
   const activeAlerts = alerts.filter(alert => !alert.acknowledged).slice(0, 3);
 
   return (
-    <>
-      <Stack.Screen 
-        options={{
-          title: 'Health Dashboard',
-          headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={24} color="white" />
-            </TouchableOpacity>
-          ),
-        }} 
-      />
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Hello, {userProfile?.displayName || user?.displayName || 'Patient'}</Text>
-            <Text style={styles.subTitle}>
-              {lastUpdated 
-                ? `Last updated: ${lastUpdated.toLocaleTimeString()}` 
-                : 'Monitoring your vital signs'}
-            </Text>
-          </View>
-        </View>
-
-        {activeAlerts.length > 0 && (
-          <View style={styles.alertsContainer}>
-            {activeAlerts.map((alert) => (
-              <AlertBanner key={alert.id} alert={alert} />
-            ))}
-            {alerts.filter(a => !a.acknowledged).length > 3 && (
-              <TouchableOpacity 
-                style={styles.viewAllAlerts}
-                onPress={() => router.push('/alerts')}
-              >
-                <Text style={styles.viewAllAlertsText}>
-                  View all ({alerts.filter(a => !a.acknowledged).length}) alerts
-                </Text>
+    <AuthGuard requireAuth={true}>
+      <>
+        <Stack.Screen 
+          options={{
+            title: 'Health Dashboard',
+            headerRight: () => (
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+                <Ionicons name="log-out-outline" size={24} color="white" />
               </TouchableOpacity>
-            )}
+            ),
+          }} 
+        />
+        <ScrollView 
+          style={styles.container}
+          contentContainerStyle={styles.contentContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.greeting}>Hello, {userProfile?.displayName || user?.displayName || 'Patient'}</Text>
+              <Text style={styles.subTitle}>
+                {lastUpdated 
+                  ? `Last updated: ${lastUpdated.toLocaleTimeString()}` 
+                  : 'Monitoring your vital signs'}
+              </Text>
+            </View>
           </View>
-        )}
 
-        <View style={styles.vitalsGrid}>
-          <VitalCard
-            title="Heart Rate"
-            value={currentVitals?.heartRate || '--'}
-            unit="BPM"
-            icon="heart"
-            color="#FF5252"
-            onPress={() => router.push('/vitals/heart-rate')}
-          />
-          
-          <VitalCard
-            title="Blood Pressure"
-            value={currentVitals ? `${currentVitals.bloodPressure.systolic}/${currentVitals.bloodPressure.diastolic}` : '--/--'}
-            unit="mmHg"
-            icon="fitness"
-            color="#5C6BC0"
-            onPress={() => router.push('/vitals/blood-pressure')}
-          />
-          
-          <VitalCard
-            title="Oxygen Saturation"
-            value={currentVitals?.oxygenSaturation || '--'}
-            unit="%"
-            icon="water"
-            color="#26C6DA"
-            onPress={() => router.push('/vitals/oxygen')}
-          />
-          
-          <VitalCard
-            title="Temperature"
-            value={currentVitals?.temperature || '--'}
-            unit="°C"
-            icon="thermometer"
-            color="#FFA726"
-            onPress={() => router.push('/vitals/temperature')}
-          />
-        </View>
+          {activeAlerts.length > 0 && (
+            <View style={styles.alertsContainer}>
+              {activeAlerts.map((alert) => (
+                <AlertBanner key={alert.id} alert={alert} />
+              ))}
+              {alerts.filter(a => !a.acknowledged).length > 3 && (
+                <TouchableOpacity 
+                  style={styles.viewAllAlerts}
+                  onPress={() => router.push('/alerts')}
+                >
+                  <Text style={styles.viewAllAlertsText}>
+                    View all ({alerts.filter(a => !a.acknowledged).length}) alerts
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
-        <EmergencyButton onPress={handleEmergency} />
+          <View style={styles.vitalsGrid}>
+            <VitalCard
+              title="Heart Rate"
+              value={currentVitals?.heartRate || '--'}
+              unit="BPM"
+              icon="heart"
+              color="#FF5252"
+              onPress={() => router.push('/vitals/heart-rate')}
+            />
+            
+            <VitalCard
+              title="Blood Pressure"
+              value={currentVitals ? `${currentVitals.bloodPressure.systolic}/${currentVitals.bloodPressure.diastolic}` : '--/--'}
+              unit="mmHg"
+              icon="fitness"
+              color="#5C6BC0"
+              onPress={() => router.push('/vitals/blood-pressure')}
+            />
+            
+            <VitalCard
+              title="Oxygen Saturation"
+              value={currentVitals?.oxygenSaturation || '--'}
+              unit="%"
+              icon="water"
+              color="#26C6DA"
+              onPress={() => router.push('/vitals/oxygen')}
+            />
+            
+            <VitalCard
+              title="Temperature"
+              value={currentVitals?.temperature || '--'}
+              unit="°C"
+              icon="thermometer"
+              color="#FFA726"
+              onPress={() => router.push('/vitals/temperature')}
+            />
+          </View>
 
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => router.push('/reports')}
-          >
-            <Ionicons name="document-text" size={24} color="#5C6BC0" />
-            <Text style={styles.actionButtonText}>Reports</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/vitals/ecg')}
-          >
-            <Ionicons name="pulse" size={24} color="#FF5252" />
-            <Text style={styles.actionButtonText}>ECG Monitor</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/caretakers')}
-          >
-            <Ionicons name="people" size={24} color="#4CAF50" />
-            <Text style={styles.actionButtonText}>Caretakers</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/settings')}
-          >
-            <Ionicons name="settings" size={24} color="#607D8B" />
-            <Text style={styles.actionButtonText}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </>
+          <EmergencyButton onPress={handleEmergency} />
+
+          <View style={styles.quickActions}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => router.push('/reports')}
+            >
+              <Ionicons name="document-text" size={24} color="#5C6BC0" />
+              <Text style={styles.actionButtonText}>Reports</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/vitals/ecg')}
+            >
+              <Ionicons name="pulse" size={24} color="#FF5252" />
+              <Text style={styles.actionButtonText}>ECG Monitor</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/caretakers')}
+            >
+              <Ionicons name="people" size={24} color="#4CAF50" />
+              <Text style={styles.actionButtonText}>Caretakers</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.actionButton}
+              onPress={() => router.push('/settings')}
+            >
+              <Ionicons name="settings" size={24} color="#607D8B" />
+              <Text style={styles.actionButtonText}>Settings</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </>
+    </AuthGuard>
   );
 }
 

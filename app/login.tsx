@@ -19,7 +19,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useContext(AuthContext);
+  const { login, authError } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -32,7 +32,7 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace('/dashboard');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+      Alert.alert('Login Failed', authError || 'Please check your credentials and try again');
     } finally {
       setIsLoading(false);
     }
