@@ -18,19 +18,16 @@ type AuthContextType = {
   logout: () => Promise<void>;
   updateUserProfile: (data: Partial<UserProfile>) => Promise<void>;
   userProfile: UserProfile | null;
-  isNewUser: boolean;
-  setIsNewUser: (value: boolean) => void;
 };
 
-// Match the Firebase structure for user profiles
 type UserProfile = {
+  uid: string;
   displayName: string;
-  email: string;
-  age?: number;
-  gender?: string;
+  age: number;
+  gender: string;
+  emergencyContacts: EmergencyContact[];
   medicalConditions: string[];
   medications: string[];
-  emergencyContacts: EmergencyContact[];
 };
 
 type EmergencyContact = {
@@ -48,15 +45,12 @@ export const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   updateUserProfile: async () => {},
   userProfile: null,
-  isNewUser: false,
-  setIsNewUser: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isNewUser, setIsNewUser] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -74,22 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (uid: string) => {
     try {
-      // Update path to match the schema: users/{userId}
-      const profileRef = ref(database, `users/${uid}`);
+      const profileRef = ref(database, `profiles/${uid}`);
       const snapshot = await get(profileRef);
       if (snapshot.exists()) {
-        const profile = snapshot.val();
-        setUserProfile(profile);
-        
-        // Check if profile is incomplete
-        const isProfileIncomplete = 
-          !profile.age || 
-          !profile.gender || 
-          (profile.medicalConditions && profile.medicalConditions.length === 0);
-        
-        setIsNewUser(isProfileIncomplete);
-      } else {
-        setIsNewUser(true);
+        setUserProfile(snapshot.val());
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -111,18 +93,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await updateProfile(auth.currentUser, { displayName });
       }
       
-      // Create initial profile under users/{userId}
+      // Create initial profile
       const initialProfile: UserProfile = {
+        uid: userCredential.user.uid,
         displayName,
-        email,
+        age: 0,
+        gender: '',
+        emergencyContacts: [],
         medicalConditions: [],
         medications: [],
-        emergencyContacts: []
       };
       
-      await set(ref(database, `users/${userCredential.user.uid}`), initialProfile);
+      await set(ref(database, `profiles/${userCredential.user.uid}`), initialProfile);
       setUserProfile(initialProfile);
-      setIsNewUser(true);
     } catch (error) {
       throw error;
     }
@@ -141,8 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       const updatedProfile = { ...userProfile, ...data };
-      // Update path to match schema: users/{userId}
-      await set(ref(database, `users/${user.uid}`), updatedProfile);
+      await set(ref(database, `profiles/${user.uid}`), updatedProfile);
       setUserProfile(updatedProfile as UserProfile);
     } catch (error) {
       throw error;
@@ -150,16 +132,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      login,
-      register,
-      logout,
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      register, 
+      logout, 
       updateUserProfile,
-      userProfile,
-      isNewUser,
-      setIsNewUser
+      userProfile
     }}>
       {children}
     </AuthContext.Provider>

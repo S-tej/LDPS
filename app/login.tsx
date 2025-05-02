@@ -19,7 +19,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isNewUser } = useContext(AuthContext);
+  const { login } = useContext(AuthContext);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -30,13 +30,7 @@ export default function LoginScreen() {
     try {
       setIsLoading(true);
       await login(email, password);
-      
-      // Check if user needs to complete their profile
-      if (isNewUser) {
-        router.replace('/profile-setup');
-      } else {
-        router.replace('/dashboard');
-      }
+      router.replace('/dashboard');
     } catch (error: any) {
       Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
     } finally {
@@ -53,7 +47,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Image 
-            // source={require('../assets/logo.png')} 
+            source={require('../assets/logo.png')} 
             style={styles.logo}
             resizeMode="contain"
           />

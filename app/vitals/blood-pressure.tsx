@@ -134,6 +134,7 @@ export default function BloodPressureScreen() {
               withOuterLines
               withVerticalLabels
               withHorizontalLabels
+              withLegend
             />
           ) : (
             <View style={styles.noDataContainer}>

@@ -1,14 +1,12 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { Stack } from 'expo-router';
 import { LineChart } from 'react-native-chart-kit';
 import { VitalsContext } from '../../context/VitalsContext';
-import { Ionicons } from '@expo/vector-icons';
 
 export default function ECGScreen() {
   const { currentVitals } = useContext(VitalsContext);
   const [ecgData, setEcgData] = useState<number[]>([]);
-  const router = useRouter();
   
   // Update ECG data when currentVitals changes
   useEffect(() => {
@@ -29,16 +27,7 @@ export default function ECGScreen() {
       <Stack.Screen options={{ title: "ECG Monitor" }} />
       <View style={styles.container}>
         <View style={styles.chartContainer}>
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>Real-time ECG</Text>
-            <TouchableOpacity 
-              style={styles.detailsButton}
-              onPress={() => router.push('/vitals/ecg-details')}
-            >
-              <Text style={styles.detailsButtonText}>Advanced View</Text>
-              <Ionicons name="chevron-forward" size={16} color="#5C6BC0" />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.title}>Real-time ECG</Text>
           
           {ecgData.length > 0 ? (
             <LineChart
@@ -87,38 +76,9 @@ export default function ECGScreen() {
             
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Rhythm:</Text>
-              <Text style={styles.infoValue}>
-                {currentVitals?.ecgMetrics?.HRV_SDNN && currentVitals.ecgMetrics.HRV_SDNN > 50 
-                  ? "Normal Sinus" 
-                  : currentVitals?.ecgMetrics?.HRV_SDNN 
-                    ? "Regular" 
-                    : "Unknown"}
-              </Text>
+              <Text style={styles.infoValue}>Normal Sinus</Text>
             </View>
           </View>
-
-          {currentVitals?.ecgMetrics && (
-            <View style={styles.quickMetricsContainer}>
-              <View style={styles.quickMetricItem}>
-                <Text style={styles.quickMetricLabel}>HRV:</Text>
-                <Text style={styles.quickMetricValue}>{currentVitals.ecgMetrics.HRV_SDNN} ms</Text>
-              </View>
-              
-              <View style={styles.quickMetricItem}>
-                <Text style={styles.quickMetricLabel}>RR:</Text>
-                <Text style={styles.quickMetricValue}>{currentVitals.ecgMetrics.RR_interval} ms</Text>
-              </View>
-              
-              <View style={styles.quickMetricItem}>
-                <Text style={[
-                  styles.quickMetricValue,
-                  Math.abs(currentVitals.ecgMetrics.ST_deviation) > 0.1 ? styles.abnormalValue : {}
-                ]}>
-                  {currentVitals.ecgMetrics.ST_deviation.toFixed(2)} mV
-                </Text>
-              </View>
-            </View>
-          )}
         </View>
         
         <View style={styles.legendContainer}>
@@ -149,26 +109,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16
-  },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 16,
     color: '#333',
-  },
-  detailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  detailsButtonText: {
-    fontSize: 14,
-    color: '#5C6BC0',
-    fontWeight: '500',
-    marginRight: 4
   },
   chart: {
     marginVertical: 8,
@@ -203,30 +148,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  quickMetricsContainer: {
-    marginTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 12,
-  },
-  quickMetricItem: {
-    alignItems: 'center',
-  },
-  quickMetricLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
-  },
-  quickMetricValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  abnormalValue: {
-    color: '#FF5252',
-  },
   legendContainer: {
     marginTop: 16,
     backgroundColor: 'white',
@@ -257,5 +178,5 @@ const styles = StyleSheet.create({
   },
   legendText: {
     color: '#333',
-  }
+  },
 });

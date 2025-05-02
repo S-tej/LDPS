@@ -3,30 +3,18 @@ import { ref, onValue, set, push } from 'firebase/database';
 import { database } from '../firebase/config';
 import { AuthContext } from './AuthContext';
 
-// Match the Firebase structure for vitals data
 export type VitalSign = {
   timestamp: number;
-  heartRate: number; 
+  heartRate: number;
   bloodPressure: {
     systolic: number;
     diastolic: number;
   };
-  oxygenSaturation: number;
+  oxygenSaturation: number; // SpO2
   temperature: number;
-  ecgData: number[];
-  ecgMetrics: {
-    HRV_SDNN: number;
-    HRV_RMSSD: number; 
-    RR_interval: number;
-    QRS_width: number;
-    PR_interval: number;
-    QT_interval: number; 
-    ST_deviation: number;
-    signal_quality: number;
-  };
+  ecgData?: number[]; // ECG readings
 };
 
-// Match the Firebase structure for thresholds
 type AlertThresholds = {
   heartRateHigh: number;
   heartRateLow: number;
@@ -96,7 +84,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Listen for real-time vitals updates - vitals/{userId}/current
+    // Listen for real-time vitals updates
     const vitalsRef = ref(database, `vitals/${user.uid}/current`);
     const unsubscribe = onValue(vitalsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -107,7 +95,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    // Listen for threshold updates - vitals/{userId}/thresholds
+    // Listen for threshold updates
     const thresholdsRef = ref(database, `vitals/${user.uid}/thresholds`);
     const thresholdsUnsubscribe = onValue(thresholdsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -118,7 +106,7 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // Get historical data - vitals/{userId}/history
+    // Get historical data
     const historyRef = ref(database, `vitals/${user.uid}/history`);
     const historyUnsubscribe = onValue(historyRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -144,7 +132,6 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
     setThresholds(updatedThresholds);
     
     try {
-      // Update thresholds at vitals/{userId}/thresholds
       await set(ref(database, `vitals/${user.uid}/thresholds`), updatedThresholds);
     } catch (error) {
       console.error('Failed to update thresholds:', error);
@@ -167,7 +154,6 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       ecgPoints.push(baseValue + peak + (Math.random() * 0.1));
     }
     
-    // Generate realistic ECG metrics
     const newVital: VitalSign = {
       timestamp: now,
       heartRate: Math.floor(Math.random() * (100 - 60) + 60),
@@ -177,29 +163,18 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
       },
       oxygenSaturation: Math.floor(Math.random() * (100 - 94) + 94),
       temperature: parseFloat((Math.random() * (37.2 - 36.5) + 36.5).toFixed(1)),
-      ecgData: ecgPoints,
-      ecgMetrics: {
-        HRV_SDNN: Math.floor(Math.random() * (70 - 20) + 20), // 20-70ms range
-        HRV_RMSSD: Math.floor(Math.random() * (50 - 15) + 15), // 15-50ms range
-        RR_interval: Math.floor(Math.random() * (1100 - 750) + 750), // 750-1100ms range
-        QRS_width: Math.floor(Math.random() * (120 - 70) + 70), // 70-120ms range
-        PR_interval: Math.floor(Math.random() * (200 - 120) + 120), // 120-200ms range
-        QT_interval: Math.floor(Math.random() * (450 - 350) + 350), // 350-450ms range
-        ST_deviation: (Math.random() * 2 - 1) * 0.2, // -0.2 to 0.2mV range
-        signal_quality: parseFloat((Math.random() * 0.3 + 0.7).toFixed(2)) // 0.7-1.0 range
-      }
+      ecgData: ecgPoints
     };
 
     try {
-      // Update current reading at vitals/{userId}/current
+      // Update current reading
       await set(ref(database, `vitals/${user.uid}/current`), newVital);
       
-      // Add to history at vitals/{userId}/history/{timestamp}
+      // Add to history
       const historyRef = ref(database, `vitals/${user.uid}/history`);
       await push(historyRef, newVital);
       
-      // Return nothing to match the expected type
-      return;
+      return newVital;
     } catch (error) {
       console.error('Failed to simulate reading:', error);
       throw error;
@@ -207,18 +182,8 @@ export const VitalsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const checkAlertStatus = (vitals: VitalSign) => {
-    if (!vitals) {
-      return {
-        heartRateHigh: false,
-        heartRateLow: false,
-        bloodPressureHigh: false,
-        bloodPressureLow: false,
-        oxygenSaturationLow: false,
-        temperatureHigh: false,
-        temperatureLow: false,
-      };
-    }
-
+    if (!vitals) return {};
+    
     return {
       heartRateHigh: vitals.heartRate > thresholds.heartRateHigh,
       heartRateLow: vitals.heartRate < thresholds.heartRateLow,

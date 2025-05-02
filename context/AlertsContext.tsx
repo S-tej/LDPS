@@ -1,9 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { ref, onValue, push, remove, query, orderByChild, limitToLast, set } from 'firebase/database';
+import { ref, onValue, push, remove, query, orderByChild, limitToLast } from 'firebase/database';
 import { database } from '../firebase/config';
 import { AuthContext } from './AuthContext';
 
-// Match the Firebase structure for alerts
 export type Alert = {
   id?: string;
   timestamp: number;
@@ -43,7 +42,7 @@ export const AlertsProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Get alerts from alerts/{userId}
+    // Get only the 50 most recent alerts
     const alertsRef = query(
       ref(database, `alerts/${user.uid}`), 
       orderByChild('timestamp'),
@@ -81,11 +80,10 @@ export const AlertsProvider = ({ children }: { children: ReactNode }) => {
     };
     
     try {
-      // Add to alerts/{userId}
       const alertsRef = ref(database, `alerts/${user.uid}`);
       await push(alertsRef, newAlert);
 
-      // Send notification to caretakers at notifications/caretakers/{userId}
+      // Send notification to caretakers
       await push(ref(database, `notifications/caretakers/${user.uid}`), {
         timestamp: now,
         patientId: user.uid,
@@ -110,8 +108,7 @@ export const AlertsProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
     
     try {
-      // Update acknowledged status at alerts/{userId}/{alertId}
-      await set(ref(database, `alerts/${user.uid}/${alertId}/acknowledged`), true);
+      await push(ref(database, `alerts/${user.uid}/${alertId}/acknowledged`), true);
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
       throw error;
@@ -122,7 +119,6 @@ export const AlertsProvider = ({ children }: { children: ReactNode }) => {
     if (!user) return;
     
     try {
-      // Remove alert at alerts/{userId}/{alertId}
       await remove(ref(database, `alerts/${user.uid}/${alertId}`));
     } catch (error) {
       console.error('Failed to clear alert:', error);

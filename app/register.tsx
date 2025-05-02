@@ -34,14 +34,19 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password should be at least 6 characters');
+      return;
+    }
+
     try {
       setIsLoading(true);
       await register(email, password, name);
-      
-      // Redirect to profile setup instead of dashboard
-      router.replace('/profile-setup');
+      Alert.alert('Success', 'Account created successfully! Please complete your profile.', [
+        { text: 'OK', onPress: () => router.push('/profile-setup') }
+      ]);
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'Please try again later');
+      Alert.alert('Registration Failed', error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
     }

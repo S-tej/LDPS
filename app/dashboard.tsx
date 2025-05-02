@@ -16,42 +16,12 @@ import { AlertsContext } from '../context/AlertsContext';
 import VitalCard from '../components/VitalCard';
 import AlertBanner from '../components/AlertBanner';
 import EmergencyButton from '../components/EmergencyButton';
-import ECGMonitor from '../components/ECGMonitor';
-import { getUserDevices } from '../utils/deviceUtils';
 
 export default function Dashboard() {
   const { user, userProfile, logout } = useContext(AuthContext);
   const { currentVitals, lastUpdated, loading: vitalsLoading, simulateReading } = useContext(VitalsContext);
   const { alerts, triggerEmergency } = useContext(AlertsContext);
   const [refreshing, setRefreshing] = useState(false);
-  const [userDevice, setUserDevice] = useState<{id: string, deviceId: string} | null>(null);
-  const [loadingDevice, setLoadingDevice] = useState(true);
-
-  // Load user's assigned device
-  useEffect(() => {
-    const loadUserDevice = async () => {
-      if (!user) return;
-      
-      try {
-        setLoadingDevice(true);
-        const devices = await getUserDevices(user.uid);
-        if (devices && devices.length > 0) {
-          setUserDevice({
-            id: devices[0].id,
-            deviceId: devices[0].deviceId
-          });
-        } else {
-          setUserDevice(null);
-        }
-      } catch (error) {
-        console.error('Error loading user device:', error);
-      } finally {
-        setLoadingDevice(false);
-      }
-    };
-    
-    loadUserDevice();
-  }, [user]);
 
   // Demo feature - simulate data readings
   useEffect(() => {
@@ -123,10 +93,6 @@ export default function Dashboard() {
     );
   };
 
-  const navigateToTestData = () => {
-    router.push('/debug/test-data');
-  };
-
   const activeAlerts = alerts.filter(alert => !alert.acknowledged).slice(0, 3);
 
   return (
@@ -174,27 +140,6 @@ export default function Dashboard() {
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
-        )}
-
-        {userDevice ? (
-          <>
-            <ECGMonitor deviceId={userDevice.deviceId} />
-            <TouchableOpacity
-              style={styles.viewDetailsButton}
-              onPress={() => router.push('/vitals/ecg-details')}
-            >
-              <Text style={styles.viewDetailsText}>View Detailed ECG Analysis</Text>
-              <Ionicons name="chevron-forward" size={16} color="#5C6BC0" />
-            </TouchableOpacity>
-          </>
-        ) : !loadingDevice && (
-          <View style={styles.noDeviceContainer}>
-            <Ionicons name="heart-dislike" size={48} color="#ccc" />
-            <Text style={styles.noDeviceText}>No ECG device assigned</Text>
-            <Text style={styles.noDeviceDescription}>
-              Please contact your healthcare provider to get an ECG monitoring device assigned to your account.
-            </Text>
           </View>
         )}
 
@@ -263,36 +208,12 @@ export default function Dashboard() {
             <Text style={styles.actionButtonText}>Caretakers</Text>
           </TouchableOpacity>
           
-          {/* <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/devices')}
-          >
-            <Ionicons name="hardware-chip" size={24} color="#FF9800" />
-            <Text style={styles.actionButtonText}>My Devices</Text>
-          </TouchableOpacity> */}
-          
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => router.push('/settings')}
           >
             <Ionicons name="settings" size={24} color="#607D8B" />
             <Text style={styles.actionButtonText}>Settings</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: '#E8F5E9' }]}
-            onPress={navigateToTestData}
-          >
-            <Ionicons name="flask" size={24} color="#43A047" />
-            <Text style={styles.actionButtonText}>Test Data</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: '#FFECB3' }]}
-            // onPress={navigateToFirebaseDebug}
-          >
-            <Ionicons name="bug" size={24} color="#FFA000" />
-            <Text style={styles.actionButtonText}>Debug Firebase</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -367,43 +288,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontWeight: '600',
     color: '#333',
-  },
-  noDeviceContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 24,
-    marginVertical: 8,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  noDeviceText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#555',
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  noDeviceDescription: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  viewDetailsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  viewDetailsText: {
-    color: '#5C6BC0',
-    fontSize: 16,
-    fontWeight: '500',
-    marginRight: 4,
   },
 });

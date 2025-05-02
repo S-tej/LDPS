@@ -1,70 +1,47 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
-  StyleSheet, 
-  ScrollView, 
   TouchableOpacity, 
-  ActivityIndicator,
+  StyleSheet, 
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Stack } from 'expo-router';
 import { AuthContext } from '../context/AuthContext';
-import { Picker } from '@react-native-picker/picker';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileSetupScreen() {
-  const router = useRouter();
-  const { user, userProfile, updateUserProfile } = useContext(AuthContext);
+  const { userProfile, updateUserProfile } = useContext(AuthContext);
+  const [age, setAge] = useState(userProfile?.age?.toString() || '');
+  const [gender, setGender] = useState(userProfile?.gender || '');
+  const [medicalConditions, setMedicalConditions] = useState<string[]>(userProfile?.medicalConditions || []);
+  const [newCondition, setNewCondition] = useState('');
+  const [medications, setMedications] = useState<string[]>(userProfile?.medications || []);
+  const [newMedication, setNewMedication] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // State for user profile information
-  const [age, setAge] = useState<string>(userProfile?.age?.toString() || '');
-  const [gender, setGender] = useState<string>(userProfile?.gender || '');
-  
-  const [medicalCondition, setMedicalCondition] = useState<string>('');
-  const [medicalConditions, setMedicalConditions] = useState<string[]>(
-    userProfile?.medicalConditions || []
-  );
-  
-  const [medication, setMedication] = useState<string>('');
-  const [medications, setMedications] = useState<string[]>(
-    userProfile?.medications || []
-  );
-  
-  const [loading, setLoading] = useState<boolean>(false);
-  const [isNewUser, setIsNewUser] = useState<boolean>(
-    !userProfile?.age && !userProfile?.gender && 
-    (!userProfile?.medicalConditions || userProfile.medicalConditions.length === 0) &&
-    (!userProfile?.medications || userProfile.medications.length === 0)
-  );
-
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!user) {
-      router.replace('/login');
-    }
-  }, [user]);
-
-  const handleAddMedicalCondition = () => {
-    if (medicalCondition.trim()) {
-      setMedicalConditions([...medicalConditions, medicalCondition.trim()]);
-      setMedicalCondition('');
+  const handleAddCondition = () => {
+    if (newCondition.trim().length > 0) {
+      setMedicalConditions([...medicalConditions, newCondition.trim()]);
+      setNewCondition('');
     }
   };
 
-  const handleRemoveMedicalCondition = (index: number) => {
+  const handleRemoveCondition = (index: number) => {
     const updatedConditions = [...medicalConditions];
     updatedConditions.splice(index, 1);
     setMedicalConditions(updatedConditions);
   };
 
   const handleAddMedication = () => {
-    if (medication.trim()) {
-      setMedications([...medications, medication.trim()]);
-      setMedication('');
+    if (newMedication.trim().length > 0) {
+      setMedications([...medications, newMedication.trim()]);
+      setNewMedication('');
     }
   };
 
@@ -74,146 +51,154 @@ export default function ProfileSetupScreen() {
     setMedications(updatedMedications);
   };
 
-  const handleSave = async () => {
+  const handleSaveProfile = async () => {
     if (!age || !gender) {
-      Alert.alert('Missing Information', 'Please provide your age and gender.');
+      Alert.alert('Error', 'Please fill in age and gender');
       return;
     }
 
     try {
-      setLoading(true);
-      
-      // Update the user profile in Firebase
+      setIsLoading(true);
       await updateUserProfile({
         age: parseInt(age),
         gender,
         medicalConditions,
-        medications
+        medications,
       });
       
-      // Alert success and navigate to dashboard or next screen
-      if (isNewUser) {
-        Alert.alert(
-          'Profile Setup Complete', 
-          'Your profile has been set up successfully. You can now add emergency contacts.',
-          [{ text: 'Continue', onPress: () => router.push('/caretakers') }]
-        );
-      } else {
-        Alert.alert(
-          'Profile Updated', 
-          'Your profile has been updated successfully.',
-          [{ text: 'OK', onPress: () => router.back() }]
-        );
-      }
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      Alert.alert('Error', 'Failed to save profile information. Please try again.');
+      Alert.alert(
+        'Profile Updated',
+        'Your profile has been successfully updated.',
+        [{ text: 'OK', onPress: () => router.push('/dashboard') }]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to update profile: ' + error.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <>
-      <Stack.Screen 
-        options={{ 
-          title: isNewUser ? "Profile Setup" : "Edit Profile",
-          headerLeft: isNewUser ? undefined : () => (
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
-          )
-        }} 
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+      <Stack.Screen options={{ title: "Complete Your Profile" }} />
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <ScrollView style={styles.container}>
-          {isNewUser && (
-            <View style={styles.welcomeContainer}>
-              <Text style={styles.welcomeTitle}>
-                Welcome to Health Guardian System
-              </Text>
-              <Text style={styles.welcomeText}>
-                Please complete your profile information to help us provide better healthcare monitoring.
-              </Text>
-            </View>
-          )}
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
           
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Basic Information</Text>
-            
-            <Text style={styles.inputLabel}>Age</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Age</Text>
             <TextInput
               style={styles.input}
-              placeholder="Enter your age"
               value={age}
               onChangeText={setAge}
+              placeholder="Enter your age"
               keyboardType="numeric"
             />
-            
-            <Text style={styles.inputLabel}>Gender</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={gender}
-                onValueChange={(itemValue) => setGender(itemValue)}
-                style={styles.picker}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Gender</Text>
+            <View style={styles.genderContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.genderButton,
+                  gender === 'Male' && styles.genderButtonActive
+                ]}
+                onPress={() => setGender('Male')}
               >
-                <Picker.Item label="Select gender" value="" />
-                <Picker.Item label="Male" value="male" />
-                <Picker.Item label="Female" value="female" />
-                <Picker.Item label="Other" value="other" />
-                <Picker.Item label="Prefer not to say" value="not_specified" />
-              </Picker>
+                <Ionicons 
+                  name="male" 
+                  size={24} 
+                  color={gender === 'Male' ? 'white' : '#5C6BC0'} 
+                />
+                <Text style={[
+                  styles.genderText,
+                  gender === 'Male' && styles.genderTextActive
+                ]}>Male</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.genderButton,
+                  gender === 'Female' && styles.genderButtonActive
+                ]}
+                onPress={() => setGender('Female')}
+              >
+                <Ionicons 
+                  name="female" 
+                  size={24} 
+                  color={gender === 'Female' ? 'white' : '#E91E63'} 
+                />
+                <Text style={[
+                  styles.genderText,
+                  gender === 'Female' && styles.genderTextActive
+                ]}>Female</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.genderButton,
+                  gender === 'Other' && styles.genderButtonActive
+                ]}
+                onPress={() => setGender('Other')}
+              >
+                <Ionicons 
+                  name="person" 
+                  size={24} 
+                  color={gender === 'Other' ? 'white' : '#9C27B0'} 
+                />
+                <Text style={[
+                  styles.genderText,
+                  gender === 'Other' && styles.genderTextActive
+                ]}>Other</Text>
+              </TouchableOpacity>
             </View>
           </View>
+
+          <Text style={styles.sectionTitle}>Medical Information</Text>
           
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Medical Conditions</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Medical Conditions</Text>
             
             <View style={styles.addItemContainer}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
-                placeholder="Enter medical condition"
-                value={medicalCondition}
-                onChangeText={setMedicalCondition}
+                style={styles.addItemInput}
+                value={newCondition}
+                onChangeText={setNewCondition}
+                placeholder="Enter condition"
               />
               <TouchableOpacity 
                 style={styles.addButton}
-                onPress={handleAddMedicalCondition}
+                onPress={handleAddCondition}
               >
                 <Ionicons name="add" size={24} color="white" />
               </TouchableOpacity>
             </View>
             
-            {medicalConditions.length > 0 ? (
-              <View style={styles.itemsList}>
-                {medicalConditions.map((condition, index) => (
-                  <View key={index} style={styles.item}>
-                    <Text style={styles.itemText}>{condition}</Text>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveMedicalCondition(index)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#f05545" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>No medical conditions added</Text>
-            )}
+            <View style={styles.tagsContainer}>
+              {medicalConditions.map((condition, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{condition}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveCondition(index)}>
+                    <Ionicons name="close-circle" size={18} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
           
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Medications</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Medications</Text>
             
             <View style={styles.addItemContainer}>
               <TextInput
-                style={[styles.input, { flex: 1 }]}
+                style={styles.addItemInput}
+                value={newMedication}
+                onChangeText={setNewMedication}
                 placeholder="Enter medication"
-                value={medication}
-                onChangeText={setMedication}
               />
               <TouchableOpacity 
                 style={styles.addButton}
@@ -223,37 +208,36 @@ export default function ProfileSetupScreen() {
               </TouchableOpacity>
             </View>
             
-            {medications.length > 0 ? (
-              <View style={styles.itemsList}>
-                {medications.map((med, index) => (
-                  <View key={index} style={styles.item}>
-                    <Text style={styles.itemText}>{med}</Text>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveMedication(index)}
-                    >
-                      <Ionicons name="close-circle" size={24} color="#f05545" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>No medications added</Text>
-            )}
+            <View style={styles.tagsContainer}>
+              {medications.map((medication, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{medication}</Text>
+                  <TouchableOpacity onPress={() => handleRemoveMedication(index)}>
+                    <Ionicons name="close-circle" size={18} color="white" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           </View>
-          
+
           <TouchableOpacity 
-            style={[styles.saveButton, loading && styles.disabledButton]} 
-            onPress={handleSave}
-            disabled={loading}
+            style={[styles.saveButton, isLoading && styles.buttonDisabled]}
+            onPress={handleSaveProfile}
+            disabled={isLoading}
           >
-            {loading ? (
-              <ActivityIndicator size="small" color="white" />
-            ) : (
-              <Text style={styles.saveButtonText}>
-                {isNewUser ? 'Continue' : 'Save Changes'}
-              </Text>
-            )}
+            <Text style={styles.saveButtonText}>
+              {isLoading ? 'Saving...' : 'Save Profile'}
+            </Text>
           </TouchableOpacity>
+          
+          {!userProfile?.age && (
+            <TouchableOpacity 
+              onPress={() => router.push('/dashboard')}
+              style={styles.skipButton}
+            >
+              <Text style={styles.skipButtonText}>Skip for now</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -263,122 +247,121 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: '#fff',
   },
-  welcomeContainer: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+  scrollContainer: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  welcomeTitle: {
+  sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  section: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
+    marginTop: 20,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
+  inputContainer: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
     color: '#333',
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#ccc',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    padding: 15,
     fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 16,
+    backgroundColor: '#f9f9f9',
   },
-  inputLabel: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 8,
+  genderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  pickerContainer: {
+  genderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#ccc',
     borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#fff',
+    padding: 12,
+    width: '31%',
   },
-  picker: {
-    height: 50,
+  genderButtonActive: {
+    backgroundColor: '#f05545',
+    borderColor: '#f05545',
+  },
+  genderText: {
+    marginLeft: 8,
+    color: '#333',
+  },
+  genderTextActive: {
+    color: 'white',
   },
   addItemContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 8,
+  },
+  addItemInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#f9f9f9',
+    marginRight: 8,
   },
   addButton: {
     backgroundColor: '#5C6BC0',
     borderRadius: 8,
     padding: 12,
-    marginLeft: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  itemsList: {
-    marginBottom: 8,
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
-  item: {
+  tag: {
+    backgroundColor: '#5C6BC0',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    margin: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
   },
-  itemText: {
-    fontSize: 16,
-    color: '#333',
-    flex: 1,
-  },
-  emptyText: {
-    color: '#666',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginVertical: 16,
+  tagText: {
+    color: 'white',
+    marginRight: 6,
   },
   saveButton: {
     backgroundColor: '#f05545',
-    borderRadius: 12,
-    paddingVertical: 16,
+    padding: 15,
+    borderRadius: 8,
     alignItems: 'center',
-    marginVertical: 16,
+    marginTop: 20,
+  },
+  buttonDisabled: {
+    backgroundColor: '#f0554580',
   },
   saveButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  disabledButton: {
-    opacity: 0.7,
+  skipButton: {
+    alignItems: 'center',
+    padding: 15,
+  },
+  skipButtonText: {
+    color: '#666',
+    fontSize: 14,
   },
 });
