@@ -57,6 +57,7 @@ export const ensureUserProfile = async (user: User) => {
     
     // If profile doesn't exist, create a basic one
     if (!snapshot.exists()) {
+      // Default to patient type for new users
       const initialProfile = {
         uid: user.uid,
         displayName: user.displayName || user.email?.split('@')[0] || 'User',
@@ -66,13 +67,31 @@ export const ensureUserProfile = async (user: User) => {
         emergencyContacts: [],
         medicalConditions: [],
         medications: [],
+        caretakers: [],
+        patients: [],
+        userType: 'patient',
+        isCaretaker: false,
+        isPatient: true
       };
       
       await set(profileRef, initialProfile);
       return initialProfile;
     }
     
-    return snapshot.val();
+    // If profile exists but doesn't have boolean flags, add them
+    const profile = snapshot.val();
+    if (!('isCaretaker' in profile) || !('isPatient' in profile)) {
+      const userType = profile.userType || 'patient';
+      const updatedProfile = {
+        ...profile,
+        isCaretaker: userType === 'caretaker',
+        isPatient: userType === 'patient'
+      };
+      await set(profileRef, updatedProfile);
+      return updatedProfile;
+    }
+    
+    return profile;
   } catch (error) {
     console.error("Error ensuring user profile:", error);
     return null;

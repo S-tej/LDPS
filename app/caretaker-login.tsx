@@ -16,7 +16,7 @@ import { AuthContext } from '../context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
 import { Stack } from 'expo-router';
 
-export default function LoginScreen() {
+export default function CaretakerLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +30,8 @@ export default function LoginScreen() {
 
     try {
       setIsLoading(true);
-      await login(email, password);
+      // We pass true to indicate this is a caretaker login
+      await login(email, password, true);
       // Routing will be handled in AuthGuard based on user type
     } catch (error: any) {
       Alert.alert('Login Failed', authError || 'Please check your credentials and try again');
@@ -45,6 +46,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="dark" />
+      <Stack.Screen options={{ title: "Caretaker Login" }} />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.logoContainer}>
           <Image 
@@ -52,8 +54,8 @@ export default function LoginScreen() {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>Lonely Death Prevention System</Text>
-          <Text style={styles.subtitle}>Sign in to monitor your health</Text>
+          <Text style={styles.title}>Caretaker Access</Text>
+          <Text style={styles.subtitle}>Sign in to monitor your patients</Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -93,7 +95,7 @@ export default function LoginScreen() {
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? 'Signing In...' : 'Sign In as Caretaker'}
             </Text>
           </TouchableOpacity>
 
@@ -103,12 +105,12 @@ export default function LoginScreen() {
               <Text style={styles.registerLink}>Register</Text>
             </TouchableOpacity>
           </View>
-
+          
           <TouchableOpacity 
             style={styles.switchLoginType}
-            onPress={() => router.push('./caretaker-login')}
+            onPress={() => router.push('/login')}
           >
-            <Text style={styles.switchLoginTypeText}>Login as Caretaker</Text>
+            <Text style={styles.switchLoginTypeText}>Login as Patient</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#5C6BC0', // Different color for caretaker
     marginBottom: 8,
   },
   subtitle: {
@@ -169,17 +171,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   forgotPasswordText: {
-    color: '#f05545',
+    color: '#5C6BC0',
     fontSize: 14,
   },
   button: {
-    backgroundColor: '#f05545',
+    backgroundColor: '#5C6BC0', // Different color for caretaker
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: '#f0554580',
+    backgroundColor: '#5C6BC080',
   },
   buttonText: {
     color: 'white',
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   registerLink: {
-    color: '#f05545',
+    color: '#5C6BC0', // Different color for caretaker
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -209,5 +211,5 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     textDecorationLine: 'underline',
-  },
+  }
 });

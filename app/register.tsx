@@ -11,21 +11,31 @@ import {
   ScrollView
 } from 'react-native';
 import { router } from 'expo-router';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext, UserType } from '../context/AuthContext';
 import { Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [userType, setUserType] = useState<UserType>('patient');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCaretaker, setIsCaretaker] = useState(false);
+  const [isPatient, setIsPatient] = useState(true);
   
   const { register } = useContext(AuthContext);
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    if (userType === 'caretaker' && !phoneNumber) {
+      Alert.alert('Error', 'Phone number is required for caretakers');
       return;
     }
 
@@ -41,7 +51,9 @@ export default function RegisterScreen() {
 
     try {
       setIsLoading(true);
-      await register(email, password, name);
+      await register(email, password, name, userType, phoneNumber);
+      
+      // In addition to the registration, update the database profile with extra flags
       Alert.alert('Success', 'Account created successfully! Please complete your profile.', [
         { text: 'OK', onPress: () => router.push('/profile-setup') }
       ]);
@@ -49,6 +61,18 @@ export default function RegisterScreen() {
       Alert.alert('Registration Failed', error.message || 'Failed to create account');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUserTypeChange = (type: UserType) => {
+    setUserType(type);
+    
+    if (type === 'caretaker') {
+      setIsCaretaker(true);
+      setIsPatient(false);
+    } else {
+      setIsCaretaker(false);
+      setIsPatient(true);
     }
   };
 
@@ -63,6 +87,28 @@ export default function RegisterScreen() {
           <View style={styles.formContainer}>
             <Text style={styles.title}>Join LDPS</Text>
             <Text style={styles.subtitle}>Create an account to monitor your health</Text>
+
+            <View style={styles.userTypeContainer}>
+              <TouchableOpacity
+                style={[styles.userTypeButton, userType === 'patient' && styles.activeUserType]}
+                onPress={() => handleUserTypeChange('patient')}
+              >
+                <Ionicons name="body" size={24} color={userType === 'patient' ? 'white' : '#333'} />
+                <Text style={[styles.userTypeText, userType === 'patient' && styles.activeUserTypeText]}>
+                  Patient
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.userTypeButton, userType === 'caretaker' && styles.activeUserType]}
+                onPress={() => handleUserTypeChange('caretaker')}
+              >
+                <Ionicons name="medkit" size={24} color={userType === 'caretaker' ? 'white' : '#333'} />
+                <Text style={[styles.userTypeText, userType === 'caretaker' && styles.activeUserTypeText]}>
+                  Caretaker
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Full Name</Text>
@@ -85,6 +131,19 @@ export default function RegisterScreen() {
                 autoCapitalize="none"
               />
             </View>
+
+            {userType === 'caretaker' && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  placeholder="Enter your phone number"
+                  keyboardType="phone-pad"
+                />
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Password</Text>
@@ -202,5 +261,32 @@ const styles = StyleSheet.create({
     color: '#f05545',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  userTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  userTypeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 15,
+    width: '48%',
+  },
+  activeUserType: {
+    backgroundColor: '#f05545',
+    borderColor: '#f05545',
+  },
+  userTypeText: {
+    fontSize: 16,
+    marginLeft: 8,
+    color: '#333',
+  },
+  activeUserTypeText: {
+    color: 'white',
   },
 });

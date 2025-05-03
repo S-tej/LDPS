@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthContext } from '../context/AuthContext';
 import { router } from 'expo-router';
@@ -6,68 +6,104 @@ import { router } from 'expo-router';
 type AuthGuardProps = {
   children: React.ReactNode;
   requireAuth?: boolean;
-  redirectToLogin?: boolean;
-  redirectPath?: string;
+  requireCaretaker?: boolean;
+  requirePatient?: boolean;
+  fallbackPath?: string;
 };
 
-/**
- * Component that protects routes based on authentication state
- */
 export default function AuthGuard({ 
   children, 
   requireAuth = true,
-  redirectToLogin = true,
-  redirectPath = '/login'
+  requireCaretaker = false,
+  requirePatient = false,
+  fallbackPath = '/login' 
 }: AuthGuardProps) {
-  const { user, loading } = useContext(AuthContext);
+  const { user, loading, userProfile } = useContext(AuthContext);
+  const navigationInProgressRef = useRef(false);
+  const hasCheckedAuthRef = useRef(false);
+  
+  // Ensure fallbackPath is valid
+  const safeFallbackPath = typeof fallbackPath === 'string' && fallbackPath 
+    ? fallbackPath 
+    : '/login';
   
   useEffect(() => {
-    if (!loading) {
-      // If auth is required but user is not logged in
-      if (requireAuth && !user) {
-        if (redirectToLogin) {
+    // Only check auth once and when not loading
+    if (loading || navigationInProgressRef.current || hasCheckedAuthRef.current) return;
+    
+    const checkAuth = async () => {
+      try {
+        navigationInProgressRef.current = true;
+        
+        // Case 1: Auth required but no user - go to login
+        if (requireAuth && !user) {
+          console.log('AuthGuard: No user, redirecting to login');
           router.replace('/login');
+          return;
         }
-      } 
-      // If auth should not be present (like login page) but user is logged in
-      else if (!requireAuth && user) {
-        router.replace('/dashboard');
+        
+        // Skip role checks if profile isn't loaded yet
+        if (!userProfile) {
+          hasCheckedAuthRef.current = true;
+          return;
+        }
+        
+        // Case 2: User exists but needs profile setup
+        if (requireAuth && user && requirePatient && 
+            userProfile.isPatient && (!userProfile.age || !userProfile.gender)) {
+          console.log('AuthGuard: User needs profile setup');
+          router.replace('/profile-setup');
+          return;
+        }
+        
+        // Case 3: Verify user has correct role for this route
+        if (requireCaretaker && !userProfile.isCaretaker) {
+          // If user is not a caretaker, redirect to caretaker login
+          console.log('AuthGuard: User is not a caretaker, redirecting to caretaker login');
+          router.push('./caretaker-login');
+          return;
+        }
+        
+        if (requirePatient && !userProfile.isPatient) {
+          // If user is not a patient, redirect to patient login
+          console.log('AuthGuard: User is not a patient, redirecting to login');
+          router.replace('/login');
+          return;
+        }
+        
+        // Auth check successful
+        hasCheckedAuthRef.current = true;
+      } finally {
+        navigationInProgressRef.current = false;
       }
-    }
-  }, [user, loading, requireAuth]);
-  
-  if (loading) {
+    };
+    
+    checkAuth();
+  }, [user, userProfile, loading]);
+
+  if (loading || (!hasCheckedAuthRef.current && requireAuth)) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#f05545" />
-        <Text style={styles.text}>Loading...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
-  
-  // If we require auth and have a user, or don't require auth and have no user
-  if ((requireAuth && user) || (!requireAuth && !user)) {
-    return <>{children}</>;
-  }
-  
-  // This will briefly show while redirecting
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#f05545" />
-    </View>
-  );
+
+  return <>{children}</>;
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
     backgroundColor: '#fff',
   },
-  text: {
-    marginTop: 16,
+  loadingText: {
+    marginTop: 12,
+    color: '#666',
     fontSize: 16,
-    color: '#333',
-  }
+  },
 });

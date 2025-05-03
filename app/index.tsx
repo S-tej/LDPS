@@ -1,20 +1,35 @@
-import React, { useContext, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useContext, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { AuthContext } from '../context/AuthContext';
 
 export default function Index() {
-  const { user, loading } = useContext(AuthContext);
+  const { user, userProfile, loading } = useContext(AuthContext);
+  const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.replace('/dashboard');
+    // If already loading or already redirected, don't proceed
+    if (loading || hasRedirectedRef.current) return;
+    
+    // Mark as redirected to prevent multiple redirects
+    hasRedirectedRef.current = true;
+    
+    // Simple redirect logic
+    if (!user) {
+      // No authenticated user, go to login
+      router.replace('/login');
+    } else if (userProfile) {
+      // User is authenticated with profile, go to appropriate dashboard
+      if (userProfile.isCaretaker) {
+        router.replace('/caretaker/dashboard');
       } else {
-        router.replace('/login');
+        router.replace('/dashboard');
       }
+    } else {
+      // User is authenticated but no profile, default to patient dashboard
+      router.replace('/dashboard');
     }
-  }, [loading, user]);
+  }, [loading, user, userProfile]);
 
   return (
     <View style={styles.container}>
@@ -36,13 +51,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 30,
+    marginBottom: 24,
     textAlign: 'center',
   },
   loading: {

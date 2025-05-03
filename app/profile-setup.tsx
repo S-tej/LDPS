@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -17,6 +17,14 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileSetupScreen() {
   const { userProfile, updateUserProfile } = useContext(AuthContext);
+  
+  // Redirect caretakers to their dashboard
+  useEffect(() => {
+    if (userProfile?.userType === 'caretaker') {
+      router.replace('/caretaker/dashboard');
+    }
+  }, [userProfile]);
+  
   const [age, setAge] = useState(userProfile?.age?.toString() || '');
   const [gender, setGender] = useState(userProfile?.gender || '');
   const [medicalConditions, setMedicalConditions] = useState<string[]>(userProfile?.medicalConditions || []);

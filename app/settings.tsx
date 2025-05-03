@@ -14,6 +14,7 @@ import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { VitalsContext } from '../context/VitalsContext';
 import { AuthContext } from '../context/AuthContext';
+import LogoutButton from '../components/LogoutButton';
 
 export default function SettingsScreen() {
   const { thresholds, updateThresholds } = useContext(VitalsContext);
@@ -102,29 +103,6 @@ export default function SettingsScreen() {
       console.error('Failed to update thresholds:', error);
       Alert.alert('Error', 'Failed to update thresholds');
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/login');
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to log out');
-            }
-          }
-        }
-      ]
-    );
   };
 
   return (
@@ -341,15 +319,6 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
           
-          {/* <TouchableOpacity 
-            style={styles.accountRow}
-            onPress={() => router.push('/devices')}
-          > */}
-            {/* <Ionicons name="hardware-chip" size={24} color="#333" />
-            <Text style={styles.accountRowText}>Manage Devices</Text>
-            <Ionicons name="chevron-forward" size={24} color="#ccc" />
-          </TouchableOpacity> */}
-          
           <TouchableOpacity 
             style={styles.accountRow}
             onPress={() => router.push('/caretakers')}
@@ -359,13 +328,21 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={[styles.accountRow, { borderBottomWidth: 0 }]}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#f05545" />
-            <Text style={[styles.accountRowText, { color: '#f05545' }]}>Log Out</Text>
-          </TouchableOpacity>
+          <View style={[styles.accountRow, { borderBottomWidth: 0 }]}>
+            <LogoutButton 
+              color="#FF5252" 
+              showText={true} 
+              iconSize={24}
+              style={{
+                flex: 1, 
+                justifyContent: 'flex-start',
+                backgroundColor: '#FF525210', 
+                padding: 12,
+                borderRadius: 8
+              }}
+              textStyle={{fontSize: 16, fontWeight: 'bold'}}
+            />
+          </View>
         </View>
         
         <View style={styles.appInfo}>

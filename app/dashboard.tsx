@@ -17,9 +17,10 @@ import VitalCard from '../components/VitalCard';
 import AlertBanner from '../components/AlertBanner';
 import EmergencyButton from '../components/EmergencyButton';
 import AuthGuard from '../components/AuthGuard';
+import LogoutButton from '../components/LogoutButton';
 
 export default function Dashboard() {
-  const { user, userProfile, logout } = useContext(AuthContext);
+  const { user, userProfile } = useContext(AuthContext);
   const { currentVitals, lastUpdated, loading: vitalsLoading, simulateReading } = useContext(VitalsContext);
   const { alerts, triggerEmergency } = useContext(AlertsContext);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,31 +43,6 @@ export default function Dashboard() {
     } finally {
       setRefreshing(false);
     }
-  };
-
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/login');
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const handleEmergency = () => {
@@ -97,15 +73,20 @@ export default function Dashboard() {
   const activeAlerts = alerts.filter(alert => !alert.acknowledged).slice(0, 3);
 
   return (
-    <AuthGuard requireAuth={true}>
+    <AuthGuard 
+      requireAuth={true} 
+      requirePatient={true}
+    >
       <>
         <Stack.Screen 
           options={{
             title: 'Health Dashboard',
             headerRight: () => (
-              <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-                <Ionicons name="log-out-outline" size={24} color="white" />
-              </TouchableOpacity>
+              <LogoutButton 
+                color="white" 
+                confirmLogout={true} 
+                style={{ marginRight: 8 }}
+              />
             ),
           }} 
         />
