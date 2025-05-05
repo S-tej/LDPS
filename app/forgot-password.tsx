@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { 
   View, 
   Text, 
@@ -12,15 +12,15 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Stack } from 'expo-router';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase/config';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { AuthContext } from '../context/AuthContext';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const { sendPasswordResetEmail } = useContext(AuthContext);
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -30,15 +30,10 @@ export default function ForgotPasswordScreen() {
 
     try {
       setIsLoading(true);
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(email);
       setResetSent(true);
     } catch (error: any) {
       let message = 'Failed to send password reset email';
-      if (error.code === 'auth/user-not-found') {
-        message = 'There is no user record corresponding to this email address.';
-      } else if (error.code === 'auth/invalid-email') {
-        message = 'Please enter a valid email address.';
-      }
       Alert.alert('Error', message);
     } finally {
       setIsLoading(false);

@@ -1,5 +1,6 @@
-import { database, auth } from '../firebase/config';
+import { database } from '../firebase/config';
 import { ref, set, get, onValue } from 'firebase/database';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Tests the Firebase realtime database connection
@@ -61,15 +62,29 @@ export const monitorConnectivity = (callback: (isConnected: boolean) => void) =>
 /**
  * Get detailed Firebase app information for debugging
  */
-export const getFirebaseDebugInfo = () => {
+export const getFirebaseDebugInfo = async () => {
   try {
+    // Get current user ID from AsyncStorage
+    const userIdJson = await AsyncStorage.getItem('currentUserId');
+    let currentUser = null;
+    
+    // If we have a user ID, get complete user data from database
+    if (userIdJson) {
+      const userId = JSON.parse(userIdJson);
+      const userSnapshot = await get(ref(database, `users/${userId}`));
+      if (userSnapshot.exists()) {
+        const userData = userSnapshot.val();
+        // Remove sensitive data
+        const { hashedPassword, ...userInfo } = userData;
+        currentUser = userInfo;
+      }
+    }
+    
     return {
-      authInitialized: !!auth,
-      currentUser: auth.currentUser ? {
-        uid: auth.currentUser.uid,
-        email: auth.currentUser.email,
-        emailVerified: auth.currentUser.emailVerified,
-        isAnonymous: auth.currentUser.isAnonymous,
+      currentUser: currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName,
       } : null,
       databaseInitialized: !!database,
       databaseURL: database.app.options.databaseURL,

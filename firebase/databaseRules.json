@@ -1,0 +1,29 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "alerts": {
+      "$userId": {
+        ".indexOn": ["timestamp", "acknowledged"]
+      }
+    },
+    "vitals": {
+      "$userId": {
+        ".indexOn": ["timestamp", "type"]
+      }
+    },
+    "profiles": {
+      ".read": "true",
+      ".write": "true"
+    },
+    "users": {
+      ".read": "true",
+      ".write": "true"
+    },
+    "passwordResets": {
+      ".read": "true",
+      ".write": "true",
+      ".indexOn": ["expiration"]
+    }
+  }
+}

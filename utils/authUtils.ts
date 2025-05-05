@@ -1,5 +1,5 @@
-import { auth, database } from '../firebase/config';
-import { User } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { database } from '../firebase/config';
 import { ref, get, set } from 'firebase/database';
 
 /**
@@ -48,9 +48,9 @@ export const getUserProfile = async (uid: string) => {
 
 /**
  * Ensure user profile exists, create if missing
- * @param user - Firebase user
+ * @param user - User object
  */
-export const ensureUserProfile = async (user: User) => {
+export const ensureUserProfile = async (user: any) => {
   try {
     const profileRef = ref(database, `profiles/${user.uid}`);
     const snapshot = await get(profileRef);
@@ -80,9 +80,17 @@ export const ensureUserProfile = async (user: User) => {
 };
 
 /**
- * Get current authenticated user
- * @returns Current Firebase user or null
+ * Get current authenticated user from local storage (replaces Firebase Auth)
  */
-export const getCurrentUser = (): User | null => {
-  return auth.currentUser;
+export const getCurrentUser = async () => {
+  try {
+    const userJson = await AsyncStorage.getItem('currentUser');
+    if (userJson) {
+      return JSON.parse(userJson);
+    }
+    return null;
+  } catch (error) {
+    console.error("Error getting current user:", error);
+    return null;
+  }
 };

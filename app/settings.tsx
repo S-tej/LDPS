@@ -14,6 +14,7 @@ import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { VitalsContext } from '../context/VitalsContext';
 import { AuthContext } from '../context/AuthContext';
+import LogoutButton from '../components/LogoutButton';
 
 export default function SettingsScreen() {
   const { thresholds, updateThresholds } = useContext(VitalsContext);
@@ -359,13 +360,18 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={24} color="#ccc" />
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={[styles.accountRow, { borderBottomWidth: 0 }]}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={24} color="#f05545" />
-            <Text style={[styles.accountRowText, { color: '#f05545' }]}>Log Out</Text>
-          </TouchableOpacity>
+          <View style={[styles.accountRow, { borderBottomWidth: 0 }]}>
+            <LogoutButton 
+              color="#FF5252" 
+              showText={true} 
+              iconSize={24}
+              style={{
+                flex: 1, 
+                justifyContent: 'flex-start',
+              }}
+              confirmLogout={true}
+            />
+          </View>
         </View>
         
         <View style={styles.appInfo}>

@@ -14,6 +14,7 @@ import {
 import { router } from 'expo-router';
 import { AuthContext } from '../context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
+import { Stack } from 'expo-router';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -30,7 +31,7 @@ export default function LoginScreen() {
     try {
       setIsLoading(true);
       await login(email, password);
-      router.replace('/dashboard');
+      // Router.replace is now handled in the login function
     } catch (error: any) {
       Alert.alert('Login Failed', authError || 'Please check your credentials and try again');
     } finally {

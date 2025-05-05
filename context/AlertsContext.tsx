@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { ref, onValue, push, remove, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, onValue, push, remove, query, orderByChild, limitToLast, get } from 'firebase/database';
 import { database } from '../firebase/config';
 import { AuthContext } from './AuthContext';
 
@@ -42,31 +42,40 @@ export const AlertsProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    // Get only the 50 most recent alerts
-    const alertsRef = query(
-      ref(database, `alerts/${user.uid}`), 
-      orderByChild('timestamp'),
-      limitToLast(50)
-    );
-    
-    const unsubscribe = onValue(alertsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const alertsData = snapshot.val();
-        const alertsArray = Object.entries(alertsData).map(([id, data]) => ({
-          id,
-          ...(data as Omit<Alert, 'id'>)
-        }));
+    const loadAlerts = async (userId: string) => {
+      try {
+        // Use orderByChild to leverage the index we created
+        const alertsRef = query(
+          ref(database, `alerts/${userId}`),
+          orderByChild('timestamp')
+        );
         
-        // Sort by timestamp, newest first
-        alertsArray.sort((a, b) => b.timestamp - a.timestamp);
-        setAlerts(alertsArray);
-      } else {
-        setAlerts([]);
+        const snapshot = await get(alertsRef);
+        if (snapshot.exists()) {
+          const alertsData = snapshot.val();
+          // Transform object to array and sort by timestamp (newest first)
+          const alertsList = Object.entries(alertsData).map(([id, data]: [string, any]) => ({
+            id,
+            ...data,
+          }));
+          alertsList.sort((a, b) => b.timestamp - a.timestamp);
+          return alertsList;
+        }
+        return [];
+      } catch (error) {
+        console.error('Error loading alerts:', error);
+        throw error;
       }
+    };
+
+    loadAlerts(user.uid).then((alertsList) => {
+      setAlerts(alertsList);
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Failed to load alerts:', error);
       setLoading(false);
     });
 
-    return () => unsubscribe();
   }, [user]);
 
   const triggerAlert = async (alert: Omit<Alert, 'id' | 'timestamp' | 'acknowledged'>) => {
