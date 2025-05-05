@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { ref, onValue, set, push } from 'firebase/database';
 import { database } from '../firebase/config';
 import { AuthContext } from './AuthContext';
+import { useESP32Data, ESP32VitalData, validateESP32Data } from '../services/esp32Service';
 
 export type VitalSign = {
   timestamp: number;
@@ -13,6 +14,16 @@ export type VitalSign = {
   oxygenSaturation: number; // SpO2
   temperature: number;
   ecgData?: number[]; // ECG readings
+  
+  // New detailed cardiac metrics
+  HRV_SDNN?: number;
+  HRV_RMSSD?: number;
+  RR_interval?: number;
+  QRS_width?: number;
+  PR_interval?: number;
+  QT_interval?: number;
+  ST_deviation?: number;
+  signal_quality?: number;
 };
 
 type AlertThresholds = {
@@ -34,12 +45,10 @@ type AlertThresholds = {
 type VitalsContextType = {
   currentVitals: VitalSign | null;
   historicalVitals: VitalSign[];
-  lastUpdated: Date | null;
-  loading: boolean;
-  thresholds: AlertThresholds;
-  updateThresholds: (newThresholds: Partial<AlertThresholds>) => Promise<void>;
-  simulateReading: () => Promise<VitalSign | undefined>;
-  checkAlertStatus: (vitals: VitalSign) => {[key: string]: boolean};
+  isLoading: boolean;
+  lastUpdate: Date | null;
+  signalQuality: number;
+  refreshVitals: () => Promise<void>;
 };
 
 const defaultThresholds: AlertThresholds = {
@@ -61,166 +70,131 @@ const defaultThresholds: AlertThresholds = {
 export const VitalsContext = createContext<VitalsContextType>({
   currentVitals: null,
   historicalVitals: [],
-  lastUpdated: null,
-  loading: true,
-  thresholds: defaultThresholds,
-  updateThresholds: async () => {},
-  simulateReading: async () => undefined,
-  checkAlertStatus: () => ({}),
+  isLoading: true,
+  lastUpdate: null,
+  signalQuality: 1,
+  refreshVitals: async () => {},
 });
 
 export const VitalsProvider = ({ children }: { children: ReactNode }) => {
+  const { user } = useContext(AuthContext);
   const [currentVitals, setCurrentVitals] = useState<VitalSign | null>(null);
   const [historicalVitals, setHistoricalVitals] = useState<VitalSign[]>([]);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [thresholds, setThresholds] = useState<AlertThresholds>(defaultThresholds);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [signalQuality, setSignalQuality] = useState(1);
   
-  const { user } = useContext(AuthContext);
+  // Get data from ESP32 using our new hook
+  const [esp32Data, esp32Loading] = useESP32Data(user?.uid || null);
 
   useEffect(() => {
     if (!user) {
-      setLoading(false);
+      setCurrentVitals(null);
+      setHistoricalVitals([]);
+      setIsLoading(false);
       return;
     }
 
-    // Listen for real-time vitals updates
-    const vitalsRef = ref(database, `vitals/${user.uid}/current`);
-    const unsubscribe = onValue(vitalsRef, (snapshot) => {
+    setIsLoading(true);
+    
+    // Reference for listening to real-time vital changes
+    const currentVitalsRef = ref(database, `vitals/${user.uid}/current`);
+    
+    const unsubscribe = onValue(currentVitalsRef, (snapshot) => {
+      setIsLoading(false);
+      
       if (snapshot.exists()) {
         const data = snapshot.val();
         setCurrentVitals(data);
-        setLastUpdated(new Date());
-      }
-      setLoading(false);
-    });
-
-    // Listen for threshold updates
-    const thresholdsRef = ref(database, `vitals/${user.uid}/thresholds`);
-    const thresholdsUnsubscribe = onValue(thresholdsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setThresholds(snapshot.val());
+        setLastUpdate(new Date(data.timestamp));
       } else {
-        // If no thresholds set, initialize with defaults
-        set(thresholdsRef, defaultThresholds);
+        setCurrentVitals(null);
       }
     });
 
-    // Get historical data
-    const historyRef = ref(database, `vitals/${user.uid}/history`);
-    const historyUnsubscribe = onValue(historyRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const vitalsArray = Object.values(data) as VitalSign[];
-        // Sort by timestamp, newest first
-        vitalsArray.sort((a, b) => b.timestamp - a.timestamp);
-        setHistoricalVitals(vitalsArray.slice(0, 100)); // Keep last 100 readings
-      }
-    });
+    // Fetch historical vitals (limit to last 50 entries)
+    const fetchHistorical = async () => {
+      const historyRef = ref(database, `vitals/${user.uid}/history`);
+      const historyUnsubscribe = onValue(historyRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          const vitalsArray = Object.values(data) as VitalSign[];
+          // Sort by timestamp, newest first
+          vitalsArray.sort((a, b) => b.timestamp - a.timestamp);
+          setHistoricalVitals(vitalsArray.slice(0, 100)); // Keep last 100 readings
+        }
+      });
 
+      return () => {
+        historyUnsubscribe();
+      };
+    };
+    
+    fetchHistorical();
+    
     return () => {
       unsubscribe();
-      thresholdsUnsubscribe();
-      historyUnsubscribe();
     };
   }, [user]);
 
-  const updateThresholds = async (newThresholds: Partial<AlertThresholds>) => {
-    if (!user) return;
+  // When ESP32 data changes, update vitals in Firebase
+  useEffect(() => {
+    if (!user || !esp32Data) return;
     
-    const updatedThresholds = { ...thresholds, ...newThresholds };
-    setThresholds(updatedThresholds);
-    
-    try {
-      await set(ref(database, `vitals/${user.uid}/thresholds`), updatedThresholds);
-    } catch (error) {
-      console.error('Failed to update thresholds:', error);
-      throw error;
-    }
-  };
-
-  // Function to generate simulated vital sign readings (for demo/testing)
-  const simulateReading = async () => {
-    if (!user) return;
-    
-    const now = Date.now();
-    
-    // Generate random ECG-like waveform data (simplified)
-    const ecgPoints: number[] = [];
-    for (let i = 0; i < 50; i++) {
-      // Simplified ECG pattern generation
-      const baseValue = 0.8;
-      const peak = i % 10 === 5 ? 0.6 : 0;
-      ecgPoints.push(baseValue + peak + (Math.random() * 0.1));
-    }
-    
-    const newVital: VitalSign = {
-      timestamp: now,
-      heartRate: Math.floor(Math.random() * (100 - 60) + 60),
+    // Convert ESP32 data to VitalSign format
+    const vitals: VitalSign = {
+      timestamp: esp32Data.timestamp,
+      heartRate: esp32Data.heartRate,
       bloodPressure: {
-        systolic: Math.floor(Math.random() * (140 - 110) + 110),
-        diastolic: Math.floor(Math.random() * (90 - 70) + 70)
+        // These are placeholders since blood pressure isn't directly measured by ECG
+        systolic: currentVitals?.bloodPressure?.systolic || 120,
+        diastolic: currentVitals?.bloodPressure?.diastolic || 80
       },
-      oxygenSaturation: Math.floor(Math.random() * (100 - 94) + 94),
-      temperature: parseFloat((Math.random() * (37.2 - 36.5) + 36.5).toFixed(1)),
-      ecgData: ecgPoints
+      oxygenSaturation: esp32Data.spo2,
+      temperature: esp32Data.temperature,
+      // New detailed cardiac metrics
+      HRV_SDNN: esp32Data.HRV_SDNN,
+      HRV_RMSSD: esp32Data.HRV_RMSSD,
+      RR_interval: esp32Data.RR_interval,
+      QRS_width: esp32Data.QRS_width,
+      PR_interval: esp32Data.PR_interval,
+      QT_interval: esp32Data.QT_interval,
+      ST_deviation: esp32Data.ST_deviation,
+      signal_quality: esp32Data.signal_quality
     };
-
-    try {
-      // Update current reading
-      await set(ref(database, `vitals/${user.uid}/current`), newVital);
+    
+    // Update signal quality
+    setSignalQuality(esp32Data.signal_quality);
+    
+    // Update vitals in Firebase
+    const currentVitalsRef = ref(database, `vitals/${user.uid}/current`);
+    set(currentVitalsRef, vitals);
+    
+    // Add to history every 5 minutes
+    const shouldAddToHistory = !lastUpdate || 
+      (new Date().getTime() - lastUpdate.getTime()) > 5 * 60 * 1000;
       
-      // Add to history
+    if (shouldAddToHistory) {
       const historyRef = ref(database, `vitals/${user.uid}/history`);
-      await push(historyRef, newVital);
-      
-      return newVital; // Fixed: Return the newVital object
-    } catch (error) {
-      console.error('Failed to simulate reading:', error);
-      throw error;
+      push(historyRef, vitals);
     }
-  };
+    
+  }, [esp32Data, user]);
 
-  const checkAlertStatus = (vitals: VitalSign) => {
-    if (!vitals) {
-      return {
-        heartRateHigh: false,
-        heartRateLow: false,
-        bloodPressureHigh: false,
-        bloodPressureLow: false,
-        oxygenSaturationLow: false,
-        temperatureHigh: false,
-        temperatureLow: false,
-      };
-    }
-
-    return {
-      heartRateHigh: vitals.heartRate > thresholds.heartRateHigh,
-      heartRateLow: vitals.heartRate < thresholds.heartRateLow,
-      bloodPressureHigh: (
-        vitals.bloodPressure.systolic > thresholds.bloodPressureHigh.systolic || 
-        vitals.bloodPressure.diastolic > thresholds.bloodPressureHigh.diastolic
-      ),
-      bloodPressureLow: (
-        vitals.bloodPressure.systolic < thresholds.bloodPressureLow.systolic ||
-        vitals.bloodPressure.diastolic < thresholds.bloodPressureLow.diastolic
-      ),
-      oxygenSaturationLow: vitals.oxygenSaturation < thresholds.oxygenSaturationLow,
-      temperatureHigh: vitals.temperature > thresholds.temperatureHigh,
-      temperatureLow: vitals.temperature < thresholds.temperatureLow
-    };
+  const refreshVitals = async (): Promise<void> => {
+    // Nothing to do - ESP32 data is received in real-time
+    // This function is kept for API compatibility
+    return Promise.resolve();
   };
 
   return (
     <VitalsContext.Provider value={{
       currentVitals,
       historicalVitals,
-      lastUpdated,
-      loading,
-      thresholds,
-      updateThresholds,
-      simulateReading,
-      checkAlertStatus,
+      isLoading: isLoading || esp32Loading,
+      lastUpdate,
+      signalQuality,
+      refreshVitals
     }}>
       {children}
     </VitalsContext.Provider>

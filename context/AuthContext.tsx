@@ -133,42 +133,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string, isCaretaker: boolean = false) => {
     setAuthError(null);
     try {
+      console.log(`Attempting login with email: ${email}, isCaretaker: ${isCaretaker}`);
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
+      console.log("Login successful, checking user profile");
       // Get the user profile
       const profileRef = ref(database, `profiles/${user.uid}`);
       const snapshot = await get(profileRef);
       
       if (snapshot.exists()) {
         const profile = snapshot.val();
+        console.log("Profile found:", profile);
         
         // Check if user is trying to log in with the correct role
         const userIsCaretaker = profile.isCaretaker || profile.userType === 'caretaker';
         
         if (isCaretaker && !userIsCaretaker) {
+          console.log("Account is not registered as a caretaker");
           await signOut(auth);
           setAuthError("This account is not registered as a caretaker");
           throw new Error("This account is not registered as a caretaker");
         }
         
         if (!isCaretaker && !profile.isPatient && profile.userType !== 'patient') {
+          console.log("Account is not registered as a patient");
           await signOut(auth);
           setAuthError("This account is not registered as a patient");
           throw new Error("This account is not registered as a patient");
         }
-        
-        // Ensure profile has required boolean flags
-        const updatedProfile = {
-          ...profile,
-          isCaretaker: profile.isCaretaker ?? (profile.userType === 'caretaker'),
-          isPatient: profile.isPatient ?? (profile.userType === 'patient'),
+      } else {
+        console.log("No profile found, creating a basic profile");
+        // Create a basic profile if none exists
+        const basicProfile = {
+          uid: user.uid,
+          displayName: user.displayName || '',
+          email: user.email || '',
+          userType: isCaretaker ? 'caretaker' : 'patient',
+          isCaretaker: isCaretaker,
+          isPatient: !isCaretaker,
+          age: 0,
+          gender: '',
+          emergencyContacts: [],
+          medicalConditions: [],
+          medications: [],
+          caretakers: [],
+          patients: [],
+          phoneNumber: ''
         };
         
-        setUserProfile(updatedProfile as UserProfile);
+        await set(profileRef, basicProfile);
       }
-      
     } catch (error: any) {
+      console.error("Login error:", error);
       setAuthError(getReadableAuthError(error));
       throw error;
     }

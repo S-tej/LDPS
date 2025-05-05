@@ -16,8 +16,8 @@ export default function Index() {
     
     // Simple redirect logic
     if (!user) {
-      // No authenticated user, go to login
-      router.replace('/login');
+      // No authenticated user, go to unified login
+      router.replace('/unified-login');
     } else if (userProfile) {
       // User is authenticated with profile, go to appropriate dashboard
       if (userProfile.isCaretaker) {

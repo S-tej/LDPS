@@ -37,8 +37,8 @@ export default function AuthGuard({
         
         // Case 1: Auth required but no user - go to login
         if (requireAuth && !user) {
-          console.log('AuthGuard: No user, redirecting to login');
-          router.replace('/login');
+          console.log('AuthGuard: No user, redirecting to unified login');
+          router.replace('/unified-login');
           return;
         }
         
@@ -58,16 +58,16 @@ export default function AuthGuard({
         
         // Case 3: Verify user has correct role for this route
         if (requireCaretaker && !userProfile.isCaretaker) {
-          // If user is not a caretaker, redirect to caretaker login
-          console.log('AuthGuard: User is not a caretaker, redirecting to caretaker login');
-          router.push('./caretaker-login');
+          // If user is not a caretaker, redirect to unified login
+          console.log('AuthGuard: User is not a caretaker, redirecting to unified login');
+          router.push('/unified-login');
           return;
         }
         
         if (requirePatient && !userProfile.isPatient) {
-          // If user is not a patient, redirect to patient login
-          console.log('AuthGuard: User is not a patient, redirecting to login');
-          router.replace('/login');
+          // If user is not a patient, redirect to unified login
+          console.log('AuthGuard: User is not a patient, redirecting to unified login');
+          router.replace('/unified-login');
           return;
         }
         
