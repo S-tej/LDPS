@@ -8,11 +8,13 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Switch,
+  Pressable
 } from 'react-native';
 import { router } from 'expo-router';
-import { Stack } from 'expo-router';
 import { AuthContext } from '../context/AuthContext';
+import { Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function ProfileSetupScreen() {
@@ -23,7 +25,19 @@ export default function ProfileSetupScreen() {
   const [newCondition, setNewCondition] = useState('');
   const [medications, setMedications] = useState<string[]>(userProfile?.medications || []);
   const [newMedication, setNewMedication] = useState('');
+  
+  // New state variables
+  const [bloodGroup, setBloodGroup] = useState(userProfile?.bloodGroup || '');
+  const [hasBpHigh, setHasBpHigh] = useState(userProfile?.hasBpHigh ? true : false);
+  const [hasBpLow, setHasBpLow] = useState(userProfile?.hasBpLow ? true : false);
+  const [height, setHeight] = useState(userProfile?.height?.toString() || '');
+  const [hasDiabetes, setHasDiabetes] = useState(userProfile?.hasDiabetes ? true : false);
+  const [weight, setWeight] = useState(userProfile?.weight?.toString() || '');
+  
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Blood group options
+  const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   const handleAddCondition = () => {
     if (newCondition.trim().length > 0) {
@@ -62,6 +76,12 @@ export default function ProfileSetupScreen() {
       await updateUserProfile({
         age: parseInt(age),
         gender,
+        bloodGroup,
+        hasBpHigh: hasBpHigh ? 1 : 0,
+        hasBpLow: hasBpLow ? 1 : 0,
+        height: parseFloat(height || '0'),
+        hasDiabetes: hasDiabetes ? 1 : 0,
+        weight: parseFloat(weight || '0'),
         medicalConditions,
         medications,
       });
@@ -156,6 +176,82 @@ export default function ProfileSetupScreen() {
                 ]}>Other</Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* New fields */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Blood Group</Text>
+            <View style={styles.bloodGroupContainer}>
+              {bloodGroups.map((group) => (
+                <TouchableOpacity
+                  key={group}
+                  style={[
+                    styles.bloodGroupButton,
+                    bloodGroup === group && styles.bloodGroupButtonActive
+                  ]}
+                  onPress={() => setBloodGroup(group)}
+                >
+                  <Text style={[
+                    styles.bloodGroupText,
+                    bloodGroup === group && styles.bloodGroupTextActive
+                  ]}>{group}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Height (cm)</Text>
+            <TextInput
+              style={styles.input}
+              value={height}
+              onChangeText={setHeight}
+              placeholder="Enter your height in cm"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Weight (kg)</Text>
+            <TextInput
+              style={styles.input}
+              value={weight}
+              onChangeText={setWeight}
+              placeholder="Enter your weight in kg"
+              keyboardType="numeric"
+            />
+          </View>
+
+          <Text style={styles.sectionTitle}>Health Information</Text>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Do you have high blood pressure?</Text>
+            <Switch
+              value={hasBpHigh}
+              onValueChange={setHasBpHigh}
+              trackColor={{ false: '#cccccc', true: '#5C6BC080' }}
+              thumbColor={hasBpHigh ? '#5C6BC0' : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Do you have low blood pressure?</Text>
+            <Switch
+              value={hasBpLow}
+              onValueChange={setHasBpLow}
+              trackColor={{ false: '#cccccc', true: '#5C6BC080' }}
+              thumbColor={hasBpLow ? '#5C6BC0' : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Do you have diabetes?</Text>
+            <Switch
+              value={hasDiabetes}
+              onValueChange={setHasDiabetes}
+              trackColor={{ false: '#cccccc', true: '#5C6BC080' }}
+              thumbColor={hasDiabetes ? '#5C6BC0' : '#f4f3f4'}
+            />
           </View>
 
           <Text style={styles.sectionTitle}>Medical Information</Text>
@@ -363,5 +459,46 @@ const styles = StyleSheet.create({
   skipButtonText: {
     color: '#666',
     fontSize: 14,
+  },
+  // New styles for blood group and switches
+  bloodGroupContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 5,
+  },
+  bloodGroupButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    margin: 4,
+    alignItems: 'center',
+    minWidth: 50,
+  },
+  bloodGroupButtonActive: {
+    backgroundColor: '#5C6BC0',
+    borderColor: '#5C6BC0',
+  },
+  bloodGroupText: {
+    color: '#333',
+  },
+  bloodGroupTextActive: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    marginBottom: 8,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
   },
 });

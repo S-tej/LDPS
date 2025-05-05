@@ -29,6 +29,12 @@ type UserProfile = {
   displayName: string;
   age: number;
   gender: string;
+  bloodGroup: string;
+  hasBpHigh: number;
+  hasBpLow: number;
+  height: number;
+  hasDiabetes: number;
+  weight: number;
   emergencyContacts: EmergencyContact[];
   medicalConditions: string[];
   medications: string[];
@@ -201,12 +207,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await AsyncStorage.setItem('currentUserId', JSON.stringify(newUser.uid));
       await AsyncStorage.setItem('lastActiveTime', Date.now().toString());
       
-      // Create initial profile
+      // Create initial profile with new fields
       const initialProfile: UserProfile = {
         uid: newUser.uid,
         displayName,
         age: 0,
         gender: '',
+        bloodGroup: '',
+        hasBpHigh: 0,
+        hasBpLow: 0,
+        height: 0,
+        hasDiabetes: 0,
+        weight: 0,
         emergencyContacts: [],
         medicalConditions: [],
         medications: [],
